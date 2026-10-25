@@ -1,0 +1,14 @@
+build/
+.gradle/
+.idea/
+*.iml
+downloads/
+/tmp/
+
+# Herramientas locales de asistentes de IA (no se entregan)
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Kit original del curso (duplicado de docs/ y scripts/)
+/chat-ice-kit/
