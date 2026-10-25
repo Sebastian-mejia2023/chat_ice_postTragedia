@@ -12,3 +12,10 @@ GEMINI.md
 
 # Kit original del curso (duplicado de docs/ y scripts/)
 /chat-ice-kit/
+
+# Documentos internos de planificacion (no los pide el taller)
+/docs/PLAN.md
+/docs/PROGRESS.md
+/docs/DECISIONS.md
+/docs/DEFENSA.md
+/scripts/

@@ -1,0 +1,15 @@
+plugins {
+    id 'java-library'
+    id 'com.zeroc.gradle.ice-builder.slice' version '1.5.2'
+}
+
+slice {
+    iceHome = file('/usr/bin/slice2java').exists() ? '/usr' : '/home/mejia/.local/opt/zeroc-ice/usr'
+    java {
+        files = [file('src/main/slice/Chat.ice')]
+    }
+}
+
+dependencies {
+    api 'com.zeroc:ice:3.7.10'
+}
