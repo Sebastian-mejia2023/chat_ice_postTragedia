@@ -1,0 +1,15 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+application {
+    mainClass = 'co.icesi.chat.client.ClientMain'
+}
+
+run {
+    standardInput = System.in
+}

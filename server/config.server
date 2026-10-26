@@ -1,0 +1,19 @@
+# Configuracion del Servidor ZeroC Ice y AudioRelay
+# Mapeo Slice -> Java para deserializar excepciones de negocio (Chat::X -> co.icesi.Chat.X)
+Ice.Package.Chat=co.icesi
+
+Chat.Host=0.0.0.0
+Chat.Port=10000
+Chat.Udp.Port=10005
+
+# Limite de mensaje Ice por defecto (1024 KB - NO modificar para cumplir chunking)
+Ice.MessageSizeMax=1024
+
+# Pool de hilos para concurrencia de servidor
+Ice.ThreadPool.Server.Size=4
+Ice.ThreadPool.Server.SizeMax=16
+
+# Deteccion de conexiones y cierre automatico
+Ice.ACM.Server.Close=2
+Ice.ACM.Server.Heartbeat=3
+Ice.ACM.Server.Timeout=30
