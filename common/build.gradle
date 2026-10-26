@@ -3,8 +3,44 @@ plugins {
     id 'com.zeroc.gradle.ice-builder.slice' version '1.5.2'
 }
 
+def findIceHome() {
+    def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+    def compiler = isWindows ? 'slice2java.exe' : 'slice2java'
+    def candidates = []
+    if (System.getenv('ICE_HOME')) {
+        candidates << System.getenv('ICE_HOME')
+    }
+    candidates += [
+        '/usr',
+        '/usr/local',
+        '/opt/ice',
+        '/opt/zeroc-ice/usr',
+        '/opt/Ice-3.7.10',
+        '/opt/homebrew',
+        "${System.getProperty('user.home')}/.local/opt/zeroc-ice/usr"
+    ]
+    def programFiles = System.getenv('ProgramFiles')
+    if (programFiles) {
+        candidates += ["${programFiles}/ZeroC/Ice-3.7.10", "${programFiles}/ZeroC/Ice"]
+    }
+    def fromCandidates = candidates.find { dir -> new File(dir, "bin/${compiler}").isFile() }
+    if (fromCandidates != null) {
+        return fromCandidates
+    }
+    def pathDirs = (System.getenv('PATH') ?: '').tokenize(File.pathSeparator)
+    def fromPath = pathDirs.collect { new File(it, compiler) }.find { it.isFile() }
+    if (fromPath != null) {
+        def binDir = fromPath.parentFile
+        return binDir.name == 'bin' ? binDir.parentFile.absolutePath : binDir.absolutePath
+    }
+    return null
+}
+
 slice {
-    iceHome = file('/usr/bin/slice2java').exists() ? '/usr' : '/home/mejia/.local/opt/zeroc-ice/usr'
+    def detectedIceHome = findIceHome()
+    if (detectedIceHome != null) {
+        iceHome = detectedIceHome
+    }
     java {
         files = [file('src/main/slice/Chat.ice')]
     }
