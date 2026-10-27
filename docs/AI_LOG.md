@@ -1,6 +1,8 @@
 # AI_LOG — Bitácora de uso ético de IA Generativa (Nivel 3: Colaboración Asistida)
 
-Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclarar conceptos y revisar errores o alternativas; el estudiante escribió y adaptó el código, tomó las decisiones de arquitectura y validó los resultados con pruebas y ejecución real. El resumen por fases está en `README.md` §6.
+Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclarar conceptos y revisar errores o alternativas; el estudiante escribió y adaptó el código, tomó las decisiones de arquitectura y validó los resultados con pruebas y ejecución real. El resumen está en `README.md` §6.
+
+**Integrante:** Sebastián Mejía Trujillo (A00410557)
 
 **Herramientas usadas:** Antigravity (Gemini) para planificación y consultas conceptuales; OpenCode (`deepseek-v4.1-flash-free`) para reproducción de fallos, revisión de casos límite y contraste de propuestas.
 
@@ -8,7 +10,7 @@ Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclar
 
 ## Plantilla de entrada
 
-### [Fecha] — Fase N — <tema>
+### <tema>
 - **Integrante:** 
 - **Herramienta/modelo:** 
 - **Consulta principal (resumen):** 
@@ -22,7 +24,7 @@ Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclar
 
 ## Entradas
 
-### 2026-10-24 — Fase 8 — Corrección de `/leavecall`
+### Corrección de `/leavecall`
 - **Integrante:** Sebastián Mejía Trujillo (A00410557)
 - **Herramienta/modelo:** OpenCode (`deepseek-v4.1-flash-free`)
 - **Consulta principal (resumen):** “Ayúdame a localizar por qué `/leavecall` no abandona la llamada y el usuario sigue activo”.
@@ -32,7 +34,7 @@ Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclar
 - **Validación (tests, ejecución, revisión):** `VoiceCallManagerTest` (1 a 1, grupal con BYE, rollback) y `AudioRelayTest` (sin eco, BYE, remitente no registrado); ejecución manual con dos clientes; `./scripts/verify.sh` con `FALLAS=0 AVISOS=3`.
 - **Lección aprendida:** un comando debe declarar su alcance (1 a 1 vs. grupal) y los protocolos de membresía deben ser idempotentes ante paquetes tardíos; el orden de parada de hilos importa para no re-registrar usuarios.
 
-### 2026-10-24 — Fase 4/8 — Verificación de transferencia de archivos con PDF
+### Verificación de transferencia de archivos con PDF
 - **Integrante:** Sebastián Mejía Trujillo (A00410557)
 - **Herramienta/modelo:** OpenCode (`deepseek-v4.1-flash-free`)
 - **Consulta principal (resumen):** “Ayúdame a probar la transferencia con el PDF del taller y a revisar casos límite; si hay algo que no funcione, explícame por qué”.

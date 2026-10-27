@@ -51,11 +51,11 @@ flowchart TD
 
     UI -->|RPC Tipadas| ICE
     ICE -->|Peticiones TCP| ChatSvc
-    CB <---|Notificaciones Asíncronas (Callbacks)| ICE
+    ICE -->|"Notificaciones Asíncronas (Callbacks)"| CB
     FS <-->|Chunks 48 KB| ICE
     ChatSvc --> UserReg & RoomMgr & CallMgr & FileRelay & Reaper
     AudioMod <-->|Datagramas Voz 1 a 1| UDPDirect
-    AudioMod <-->|Datagramas Voz Grupal (HELLO/AUDIO/BYE)| UDPRelay
+    AudioMod <-->|"Datagramas Voz Grupal (HELLO/AUDIO/BYE)"| UDPRelay
     UDPRelay <--> RelaySFU
 ```
 
