@@ -56,7 +56,8 @@ public class IntegrationSmokeTest {
         fileRelay.setClientReaper(reaper);
 
         ChatServiceI servant = new ChatServiceI(
-                userRegistry, roomManager, callManager, broadcaster, fileRelay, audioRelay, reaper, "127.0.0.1"
+                userRegistry, roomManager, callManager, broadcaster, fileRelay, audioRelay, reaper,
+                "0.0.0.0", ""
         );
         adapter.add(servant, Util.stringToIdentity("ChatService"));
         adapter.activate();
@@ -89,7 +90,7 @@ public class IntegrationSmokeTest {
     }
 
     @Test
-    @DisplayName("Integracion: Login, presencia, creacion de sala, envio de mensajes privados y logout")
+    @DisplayName("Integracion: Login, presencia, sala, AudioRelay, mensajes privados y logout")
     public void testFullIntegrationFlow() throws Exception {
         ChatServicePrx chatService = ChatServicePrx.checkedCast(
                 clientCommunicator.stringToProxy("ChatService:tcp -h 127.0.0.1 -p " + serverPort)
@@ -156,14 +157,21 @@ public class IntegrationSmokeTest {
         assertTrue(rooms.length >= 1);
         assertEquals("general", rooms[0]);
 
-        // 3. Enviar mensaje privado a si mismo
+        // 3. El relay debe anunciar la IP local de la conexion, nunca 0.0.0.0
+        UdpEndpoint relay = chatService.joinRoomCall(
+                "general", "alice", new UdpEndpoint("127.0.0.1", 12345));
+        assertEquals("127.0.0.1", relay.host);
+        assertEquals(audioRelay.getBoundPort(), relay.port);
+        chatService.leaveRoomCall("general", "alice");
+
+        // 4. Enviar mensaje privado a si mismo
         chatService.sendPrivate("alice", "alice", "Hola a mi mismo");
         PrivateMessage received = privateMessages.poll(3, TimeUnit.SECONDS);
         assertNotNull(received);
         assertEquals("alice", received.from);
         assertEquals("Hola a mi mismo", received.text);
 
-        // 4. Logout
+        // 5. Logout
         chatService.logout("alice");
         String[] usersAfter = chatService.listUsers();
         assertEquals(0, usersAfter.length);

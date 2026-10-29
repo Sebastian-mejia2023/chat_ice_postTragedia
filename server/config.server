@@ -2,9 +2,15 @@
 # Mapeo Slice -> Java para deserializar excepciones de negocio (Chat::X -> co.icesi.Chat.X)
 Ice.Package.Chat=co.icesi
 
+# Interfaz donde escucha Ice. 0.0.0.0 = todas las interfaces de la LAN.
 Chat.Host=0.0.0.0
 Chat.Port=10000
 Chat.Udp.Port=10005
+
+# IP que el servidor anuncia para el AudioRelay UDP.
+# Vacio = automatico: usa la IP local real de la conexion Ice de cada cliente.
+# Fijala solo si el servidor tiene varias interfaces (VPN, Docker) o NAT, p. ej. 192.168.1.50.
+Chat.Advertised.Host=
 
 # Limite de mensaje Ice por defecto (1024 KB - NO modificar para cumplir chunking)
 Ice.MessageSizeMax=1024
