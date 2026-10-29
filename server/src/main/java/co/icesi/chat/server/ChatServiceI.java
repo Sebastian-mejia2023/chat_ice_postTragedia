@@ -14,10 +14,13 @@ import co.icesi.Chat.TransferException;
 import co.icesi.Chat.UdpEndpoint;
 import co.icesi.Chat.UserAlreadyExistsException;
 import co.icesi.Chat.UserNotFoundException;
+import com.zeroc.Ice.ConnectionInfo;
 import com.zeroc.Ice.Current;
+import com.zeroc.Ice.IPConnectionInfo;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -37,12 +40,13 @@ public class ChatServiceI implements ChatService {
     private final FileRelayService fileRelayService;
     private final AudioRelay audioRelay;
     private final ClientReaper clientReaper;
-    private final String serverHost;
+    private final String configuredHost;
+    private final String advertisedHost;
 
     public ChatServiceI(UserRegistry userRegistry, RoomManager roomManager,
                         CallManager callManager, Broadcaster broadcaster,
                         FileRelayService fileRelayService, AudioRelay audioRelay,
-                        ClientReaper clientReaper, String serverHost) {
+                        ClientReaper clientReaper, String configuredHost, String advertisedHost) {
         this.userRegistry = userRegistry;
         this.roomManager = roomManager;
         this.callManager = callManager;
@@ -50,7 +54,8 @@ public class ChatServiceI implements ChatService {
         this.fileRelayService = fileRelayService;
         this.audioRelay = audioRelay;
         this.clientReaper = clientReaper;
-        this.serverHost = serverHost != null ? serverHost : "127.0.0.1";
+        this.configuredHost = configuredHost;
+        this.advertisedHost = advertisedHost;
     }
 
     @Override
@@ -234,8 +239,30 @@ public class ChatServiceI implements ChatService {
         Collection<String> members = roomManager.getMembers(room);
         broadcaster.broadcastRoomCallMemberJoined(members, room, nickname);
 
-        // Retorna el endpoint UDP del AudioRelay del servidor
-        return new UdpEndpoint(serverHost, audioRelay.getBoundPort());
+        String relayHost = RelayHostResolver.resolve(
+                advertisedHost, connectionLocalAddress(current), configuredHost);
+        LOGGER.fine("AudioRelay anunciado a '" + nickname + "' en " + relayHost + ":" + audioRelay.getBoundPort());
+        return new UdpEndpoint(relayHost, audioRelay.getBoundPort());
+    }
+
+    /**
+     * Obtiene la IP local del socket TCP de la invocacion actual. Es la unica forma fiable de
+     * anunciar una IP alcanzable cuando el servidor escucha en 0.0.0.0.
+     */
+    private String connectionLocalAddress(Current current) {
+        if (current == null || current.con == null) {
+            return null;
+        }
+
+        try {
+            ConnectionInfo info = current.con.getInfo();
+            if (info instanceof IPConnectionInfo) {
+                return ((IPConnectionInfo) info).localAddress;
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.FINE, "No se pudo obtener la IP local de la conexion Ice", e);
+        }
+        return null;
     }
 
     @Override

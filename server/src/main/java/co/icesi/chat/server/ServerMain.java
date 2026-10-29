@@ -57,6 +57,7 @@ public class ServerMain {
 
         int icePort = Integer.parseInt(initData.properties.getProperty("Chat.Port"));
         String host = initData.properties.getProperty("Chat.Host");
+        String advertisedHost = initData.properties.getProperty("Chat.Advertised.Host");
         int udpPort = Integer.parseInt(initData.properties.getProperty("Chat.Udp.Port"));
 
         AudioRelay audioRelay = new AudioRelay(udpPort);
@@ -83,7 +84,7 @@ public class ServerMain {
 
             ChatServiceI servant = new ChatServiceI(
                     userRegistry, roomManager, callManager, broadcaster, fileRelay, audioRelay, clientReaper,
-                    "0.0.0.0".equals(host) ? "127.0.0.1" : host
+                    host, advertisedHost
             );
 
             adapter.add(servant, Util.stringToIdentity("ChatService"));
@@ -105,6 +106,9 @@ public class ServerMain {
             LOGGER.info("Servidor Chat Ice 3.7 iniciado exitosamente");
             LOGGER.info("Endpoint TCP Ice : " + endpoint);
             LOGGER.info("Endpoint UDP Voz : 0.0.0.0:" + audioRelay.getBoundPort());
+            LOGGER.info("Host UDP anunciado: " + (advertisedHost == null || advertisedHost.isBlank()
+                    ? "auto (IP local de cada conexion Ice)"
+                    : advertisedHost));
             LOGGER.info("Servant Identity : ChatService");
             LOGGER.info("=================================================");
 
