@@ -22,7 +22,12 @@ public class SpeakerAudioSink implements AudioSink {
         }
         try {
             line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(AudioConstants.AUDIO_FORMAT);
+            // Buffer de linea acotado (8 frames = 160 ms): evita acumular latencia en el altavoz.
+            line.open(AudioConstants.AUDIO_FORMAT, AudioConstants.FRAME_PAYLOAD_SIZE * 8);
+            // Colchon inicial de 2 frames de silencio (40 ms): absorbe la imprecision del timer de 20 ms
+            // (en Windows ronda los 15 ms) sin que el altavoz se quede sin datos y "corte" el audio.
+            byte[] silence = new byte[AudioConstants.FRAME_PAYLOAD_SIZE * 2];
+            line.write(silence, 0, silence.length);
             line.start();
         } catch (LineUnavailableException ignored) {
         }

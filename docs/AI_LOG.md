@@ -54,3 +54,14 @@ Registro de **apoyo**, no de autoría. La IAG se utilizó para planificar, aclar
 - **Limitaciones o errores de las sugerencias:** la primera propuesta asumía que bastaba con llamar a `AudioMixer.mix` dentro del hilo receptor; eso no mezclaba voces concurrentes ni daba ritmo de reproducción. Se descartó y se separó recepción de mezcla. Tampoco se pudo verificar audio físico con micrófono/altavoz en este entorno; la validación es lógica y con sockets loopback.
 - **Validación (tests, ejecución, revisión):** `AudioPlayerTest` (7 pruebas) y `AudioMixerTest` en verde; `./scripts/verify.sh` → `FALLAS=0 AVISOS=3`. El audio real en dos máquinas y el comportamiento acústico quedan pendientes de prueba manual.
 - **Lección aprendida:** una clase con tests unitarios no prueba que el requisito esté integrado; la prueba debe atravesar el flujo real (socket → buffer → mezcla → sink). También es importante que el README no afirme comportamiento que el código no ejecuta.
+
+### Jitter buffer en `AudioPlayer` (audio entrecortado entre dispositivos)
+- **Integrante:** Sebastián Mejía Trujillo (A00410557)
+- **Herramienta/modelo:** Claude
+- **Fecha:** 2026-10-28
+- **Consulta principal (resumen):** “Corrige para que la mezcla no se escuche entrecortada y verifica que todo esté bien”.
+- **Apoyo brindado por la IAG:** identificó que la cola de 2 frames (40 ms) por emisor dejaba el altavoz sin datos ante cualquier variación en la llegada de los paquetes UDP, y propuso un jitter buffer.
+- **Trabajo y adaptación realizada:** `AudioPlayer` ahora no reproduce a un emisor hasta acumular 3 frames (60 ms), admite hasta 6 (120 ms), descarta el más viejo si se llena y vuelve a acumular tras quedarse vacío. `SpeakerAudioSink` abre la línea con buffer de 8 frames y 2 frames de silencio iniciales. Se ajustó `AudioPlayerTest` (constructor de pruebas con buffer 1/2) y se añadieron 4 pruebas del jitter buffer.
+- **Limitaciones o errores de las sugerencias:** no se pudo verificar con micrófono y altavoz físicos; los valores 3/6 son estimados y pueden requerir ajuste.
+- **Validación (tests, ejecución, revisión):** `AudioPlayerTest` (11 pruebas) en verde.
+- **Lección aprendida:** en audio en tiempo real un buffer demasiado pequeño no reduce latencia útil, produce cortes; hay que equilibrar latencia (60-120 ms) contra continuidad.

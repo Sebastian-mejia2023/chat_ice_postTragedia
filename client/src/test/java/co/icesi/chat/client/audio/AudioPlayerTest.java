@@ -32,7 +32,7 @@ public class AudioPlayerTest {
     public void mixesTwoSendersBeforeWriting() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.enqueue(audioPacket("alice", 1000));
             player.enqueue(audioPacket("bob", 2000));
@@ -50,7 +50,7 @@ public class AudioPlayerTest {
     public void clipsWhenVoicesOverflow() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.enqueue(audioPacket("alice", 30000));
             player.enqueue(audioPacket("bob", 30000));
@@ -66,7 +66,7 @@ public class AudioPlayerTest {
     public void dropsOldestFrameWhenSenderBufferIsFull() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.enqueue(audioPacket("alice", 1));
             player.enqueue(audioPacket("alice", 2));
@@ -80,11 +80,92 @@ public class AudioPlayerTest {
     }
 
     @Test
+    @DisplayName("Jitter buffer: no reproduce a un emisor hasta acumular 3 frames (60 ms)")
+    public void waitsForPrebufferBeforePlaying() throws Exception {
+        try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            FakeAudioSink sink = new FakeAudioSink();
+            AudioPlayer player = new AudioPlayer(socket, sink);
+
+            player.enqueue(audioPacket("alice", 11));
+            player.enqueue(audioPacket("alice", 12));
+            player.mixAndPlayOnce();
+            assertTrue(isSilence(sink.lastWrite()), "con 2 frames todavia debe haber silencio");
+
+            player.enqueue(audioPacket("alice", 13));
+            player.mixAndPlayOnce();
+            assertEquals(11, sampleAt(sink.lastWrite(), 0), "con 3 frames empieza por el mas viejo");
+            player.mixAndPlayOnce();
+            assertEquals(12, sampleAt(sink.lastWrite(), 0));
+            player.mixAndPlayOnce();
+            assertEquals(13, sampleAt(sink.lastWrite(), 0));
+        }
+    }
+
+    @Test
+    @DisplayName("Jitter buffer: tras un vacio vuelve a acumular antes de reanudar")
+    public void rebuffersAfterUnderrun() throws Exception {
+        try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            FakeAudioSink sink = new FakeAudioSink();
+            AudioPlayer player = new AudioPlayer(socket, sink);
+
+            for (int i = 1; i <= 3; i++) {
+                player.enqueue(audioPacket("alice", i));
+            }
+            for (int i = 0; i < 3; i++) {
+                player.mixAndPlayOnce();
+            }
+            player.mixAndPlayOnce(); // vacio: pasa a "acumulando"
+            assertTrue(isSilence(sink.lastWrite()));
+
+            player.enqueue(audioPacket("alice", 21));
+            player.mixAndPlayOnce();
+            assertTrue(isSilence(sink.lastWrite()), "1 frame no alcanza para reanudar");
+
+            player.enqueue(audioPacket("alice", 22));
+            player.enqueue(audioPacket("alice", 23));
+            player.mixAndPlayOnce();
+            assertEquals(21, sampleAt(sink.lastWrite(), 0));
+        }
+    }
+
+    @Test
+    @DisplayName("Jitter buffer: una rafaga de paquetes se absorbe hasta 6 frames y luego descarta el mas viejo")
+    public void absorbsBurstsUpToSixFrames() throws Exception {
+        try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            FakeAudioSink sink = new FakeAudioSink();
+            AudioPlayer player = new AudioPlayer(socket, sink);
+
+            for (int i = 1; i <= 8; i++) {
+                player.enqueue(audioPacket("alice", i));
+            }
+            player.mixAndPlayOnce();
+            assertEquals(3, sampleAt(sink.lastWrite(), 0), "los frames 1 y 2 se descartaron por estar lleno");
+        }
+    }
+
+    @Test
+    @DisplayName("Jitter buffer: un emisor en pre-buffer no frena a otro que ya suena")
+    public void sendersAreBufferedIndependently() throws Exception {
+        try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            FakeAudioSink sink = new FakeAudioSink();
+            AudioPlayer player = new AudioPlayer(socket, sink);
+
+            for (int i = 0; i < 3; i++) {
+                player.enqueue(audioPacket("alice", 100));
+            }
+            player.enqueue(audioPacket("bob", 5)); // bob aun acumulando
+
+            player.mixAndPlayOnce();
+            assertEquals(100, sampleAt(sink.lastWrite(), 0), "solo suena alice");
+        }
+    }
+
+    @Test
     @DisplayName("Paquetes HELLO, vacios o de otro tipo no se reproducen")
     public void ignoresPacketsThatAreNotAudio() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.enqueue(new AudioPacket(
                     AudioConstants.PACKET_TYPE_HELLO, (short) 1, 0, 0L, "sala", "alice",
@@ -104,7 +185,7 @@ public class AudioPlayerTest {
     public void writesSilenceWhenNoFramesAreAvailable() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.mixAndPlayOnce();
 
@@ -122,7 +203,7 @@ public class AudioPlayerTest {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress());
              DatagramSocket sender = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
             InetSocketAddress target = new InetSocketAddress(
                     InetAddress.getLoopbackAddress(), socket.getLocalPort());
 
@@ -150,7 +231,7 @@ public class AudioPlayerTest {
     public void stopClosesSinkAndIsIdempotent() throws Exception {
         try (DatagramSocket socket = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
             FakeAudioSink sink = new FakeAudioSink();
-            AudioPlayer player = new AudioPlayer(socket, sink);
+            AudioPlayer player = new AudioPlayer(socket, sink, 1, 2);
 
             player.stop();
             player.stop();

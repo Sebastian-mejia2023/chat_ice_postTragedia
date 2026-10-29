@@ -70,20 +70,20 @@ flowchart TD
    - Captura y reproducción continua mediante la API `javax.sound.sampled` de Java en formato **PCM 16 kHz, 16 bit, mono, signed, little-endian**.
    - Empaquetamiento en tramas de 20 ms = 640 bytes de payload de audio, encapsulados en datagramas `DatagramPacket` con cabecera binaria estructurada (`PacketCodec`).
    - **Llamadas 1 a 1:** Comunicación directa Peer-to-Peer sobre UDP entre ambos clientes.
-   - **Conferencias Grupales (AudioRelay SFU Ligero):** El servidor recibe los flujos de voz de la sala y los retransmite a los demás integrantes, **suprimiendo estrictamente el eco hacia el emisor**. En el cliente, `AudioPlayer` mantiene un buffer acotado por emisor (2 frames; si se llena, descarta el más viejo) y cada 20 ms llama a `AudioMixer.mix(...)` para sumar las voces con saturación aritmética (*clipping*) antes de escribir 640 B en el `AudioSink`. Si no hay audio disponible, escribe silencio para conservar el ritmo del dispositivo de salida.
+   - **Conferencias Grupales (AudioRelay SFU Ligero):** El servidor recibe los flujos de voz de la sala y los retransmite a los demás integrantes, **suprimiendo estrictamente el eco hacia el emisor**. En el cliente, `AudioPlayer` mantiene un buffer acotado por emisor (pre-buffer de 3 frames y máx. 6; si se llena, descarta el más viejo) y cada 20 ms llama a `AudioMixer.mix(...)` para sumar las voces con saturación aritmética (*clipping*) antes de escribir 640 B en el `AudioSink`. Si no hay audio disponible, escribe silencio para conservar el ritmo del dispositivo de salida.
 
 #### Mezcla de audio por emisor
 
 El flujo real de reproducción es:
 
 ```text
-DatagramSocket.receive -> PacketCodec.decode -> cola por nickname (máx. 2 frames)
+DatagramSocket.receive -> PacketCodec.decode -> jitter buffer por nickname (pre-buffer 3 frames, máx. 6)
       -> cada 20 ms: AudioMixer.mix(frames, 640) -> AudioSink.write(640 B)
 ```
 
 - **Llamada 1 a 1:** hay un solo emisor; la mezcla devuelve su frame y el audio se escucha igual, con ~20 ms de buffer adicional.
 - **Llamada grupal:** se toma como máximo un frame por emisor en cada tick y se suman las muestras; el `AudioRelay` ya evita el eco, por lo que el cliente solo mezcla voces ajenas.
-- **Jitter y pérdidas:** el buffer de 2 frames absorbe ráfagas cortas sin acumular latencia; si un emisor se atrasa, se reproduce silencio en ese tick. No hay retransmisión ni buffer adaptativo.
+- **Jitter y pérdidas:** el jitter buffer por emisor (empieza a sonar con 3 frames = 60 ms y admite hasta 6 = 120 ms) absorbe la variación de llegada de los paquetes sin cortar el audio ni acumular latencia; si un emisor se atrasa, se reproduce silencio en ese tick. No hay retransmisión ni buffer adaptativo.
 - **Concurrencia:** la cola de cada emisor se protege con `synchronized`; el `sink.write` se ejecuta fuera de ese lock. El hilo mezclador y el receptor son daemon y se detienen en `stop()`.
 - **Pruebas:** `AudioPlayerTest` verifica mezcla de dos emisores, clipping, descarte del frame más viejo, paquetes no-audio, recepción UDP real con socket efímero y cierre limpio.
 
